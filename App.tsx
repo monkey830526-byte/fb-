@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CopywriterConfig, CopyStyle } from './types';
 import { generatePropertyCopy } from './services/geminiService';
 
@@ -9,7 +9,7 @@ const DEFAULT_CONFIG: CopywriterConfig = {
   lineId: 'pi2358',
   lineLink: 'https://line.me/ti/p/iU_QvNI7t0',
   licenseId: '(113) 登字第 481916 號',
-  brokerInfo: '', // 預設為空，交由 service 處理 fallback
+  brokerInfo: '',
   featureIcon: '🤟',
 };
 
@@ -25,10 +25,37 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(false);
+  const [showKeyGuide, setShowKeyGuide] = useState(false);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    checkApiKey();
+  }, []);
+
+  const checkApiKey = async () => {
+    try {
+      // @ts-ignore
+      const selected = await window.aistudio.hasSelectedApiKey();
+      setHasApiKey(selected);
+    } catch (e) {
+      setHasApiKey(false);
+    }
+  };
+
+  const handleSelectApiKey = async () => {
+    try {
+      // @ts-ignore
+      await window.aistudio.openSelectKey();
+      setHasApiKey(true);
+      setShowKeyGuide(false);
+    } catch (e) {
+      console.error("Failed to open key selector", e);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -61,6 +88,10 @@ const App: React.FC = () => {
       setGeneratedText(result);
     } catch (err: any) {
       setError(err.message || '發生錯誤');
+      if (err.message?.includes("API 金鑰")) {
+        setHasApiKey(false);
+        setShowKeyGuide(true);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -84,6 +115,58 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] flex flex-col antialiased">
+      {/* Key Guide Modal */}
+      {showKeyGuide && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#1e293b] w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10 animate-in zoom-in-95 duration-300">
+            <div className="p-8 pb-4 flex justify-between items-start">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🔑</span>
+                <h2 className="text-2xl font-black text-[#fbbf24] tracking-tight">如何獲取 API 金鑰？</h2>
+              </div>
+              <button onClick={() => setShowKeyGuide(false)} className="text-slate-400 hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="px-8 pb-8 space-y-6">
+              <p className="text-slate-300 text-sm leading-relaxed">
+                本系統使用 Google Gemini 強大的 AI 模型進行推演，您需要免費申請一個金鑰。
+              </p>
+              
+              <ol className="space-y-4">
+                {[
+                  { text: '前往 Google AI Studio', link: 'https://aistudio.google.com/app/api-keys?projectFilter=gen-lang-client-0354138731' },
+                  { text: '登入您的 Google 帳號。' },
+                  { text: '點擊藍色的 Create API key 按鈕。' },
+                  { text: '選擇 Create API key in new project。' },
+                  { text: '複製以 AIza 開頭的字串。' },
+                  { text: '回到這裡點擊下方按鈕貼上即可使用！' }
+                ].map((step, i) => (
+                  <li key={i} className="flex gap-4 text-slate-200">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs font-black text-amber-400 border border-white/10">{i + 1}</span>
+                    <span className="text-sm">
+                      {step.link ? (
+                        <a href={step.link} target="_blank" rel="noreferrer" className="text-blue-400 font-bold underline hover:text-blue-300 transition-colors">{step.text}</a>
+                      ) : step.text}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+
+              <button 
+                onClick={handleSelectApiKey}
+                className="w-full py-4 bg-[#c2410c] hover:bg-[#9a3412] text-white font-black text-lg rounded-2xl shadow-xl transition-all transform active:scale-[0.98] mt-4"
+              >
+                我瞭解了
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <nav className="bg-[#0f172a] text-white sticky top-0 z-50 shadow-2xl">
         <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -95,16 +178,18 @@ const App: React.FC = () => {
               <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Tainan Realtor AI Pro</p>
             </div>
           </div>
-          <button 
-            onClick={() => setShowConfig(!showConfig)} 
-            className="flex items-center gap-2 bg-slate-800/50 hover:bg-slate-700 px-4 py-2 rounded-xl border border-white/5 transition-all text-xs font-bold"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            經紀人設定
-          </button>
+          <div className="flex items-center gap-3">
+             <button 
+              onClick={() => setShowConfig(!showConfig)} 
+              className="flex items-center gap-2 bg-slate-800/50 hover:bg-slate-700 px-4 py-2 rounded-xl border border-white/5 transition-all text-xs font-bold"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              設定
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -113,13 +198,44 @@ const App: React.FC = () => {
           {showConfig && (
             <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-200 animate-in fade-in slide-in-from-top-4 duration-300">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">📋 經紀人名片設定</h3>
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">📋 系統與個人設定</h3>
                 <button onClick={() => setShowConfig(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
                 </button>
               </div>
+
+              {/* API Key Section */}
+              <div className="mb-8 p-4 rounded-2xl bg-amber-50 border border-amber-200">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-[10px] font-black text-amber-600 uppercase tracking-wider">🔑 API 金鑰管理</label>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${hasApiKey ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {hasApiKey ? '已連接金鑰' : '尚未設定'}
+                  </span>
+                </div>
+                <button 
+                  onClick={handleSelectApiKey}
+                  className="w-full py-3 bg-white border border-amber-300 text-amber-700 rounded-xl text-xs font-black hover:bg-amber-100 transition-all shadow-sm flex items-center justify-center gap-2 mb-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                  選取專屬 API 金鑰
+                </button>
+                <div className="flex items-center justify-between px-1">
+                  <button onClick={() => setShowKeyGuide(true)} className="text-[10px] text-blue-600 font-black hover:underline">如何獲取金鑰？</button>
+                  <a 
+                    href="https://ai.google.dev/gemini-api/docs/billing" 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="text-[9px] text-amber-700 underline font-black hover:text-amber-900 transition-colors"
+                  >
+                    計費與額度說明 ↗
+                  </a>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase">經紀人姓名</label>

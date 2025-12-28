@@ -14,9 +14,9 @@ const SYSTEM_INSTRUCTION = `你是一位台灣頂尖房地產文案寫手，專�
 
 # 風格圖案策略：
 1. 【正常版】：使用 📋, 📍, 💰, 🏠 等標準專業符號。
-2. 【溫馨版】：使用 🌿, ✨, ☕, 👨‍👩‍👧, ☀️ 等感性溫溫暖符號。
+2. 【溫馨版】：使用 🌿, ✨, ☕, 👨‍👩‍👧, ☀️ 等感性溫暖符號。
 3. 【專業版】：使用 💎, 📈, 🏢, 🚀, 班等權威價值符號。
-4. 【口播版】：使用 📢, 🚨, 💥, 🔥, 🏃‍♂️ 等高強度吸引符號。
+4. 【口播版】：使用 📢, 🚨, 💥, 🔥, 跑者等高強度吸引符號。
 
 # Output Format (通用結構範例)
 [風格專屬 Emoji] [物件案名]｜[吸睛賣點] [風格專屬 Emoji]
@@ -56,6 +56,7 @@ export async function generatePropertyCopy(
   style: CopyStyle,
   pdfBase64?: string
 ): Promise<string> {
+  // 每次生成時重新初始化，以讀取最新的 API KEY
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const styleDescriptions = {
@@ -65,7 +66,6 @@ export async function generatePropertyCopy(
     broadcast: "【口播版】：專為短影音設計。開頭必須有極強的鉤子，中間節奏緊湊。多用 🚨, 🔥 等吸睛符號。"
   };
 
-  // 如果使用者沒填經紀人資訊，預設使用內建資訊
   const finalBrokerInfo = config.brokerInfo.trim() || DEFAULT_BROKER_INFO;
 
   const parts: any[] = [
@@ -105,8 +105,11 @@ ${finalBrokerInfo}
     });
 
     return response.text || "生成失敗。";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
-    throw new Error("生成過程中發生錯誤。");
+    if (error.message?.includes("Requested entity was not found")) {
+      throw new Error("API 金鑰無效或未設定。請在設定中選取有效的金鑰。");
+    }
+    throw new Error(error.message || "生成過程中發生錯誤。");
   }
 }
