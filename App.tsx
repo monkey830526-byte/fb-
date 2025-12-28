@@ -25,8 +25,7 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(false);
-  const [showKeyGuide, setShowKeyGuide] = useState(false);
-  const [showKeyOverlay, setShowKeyOverlay] = useState(false);
+  const [showKeyModal, setShowKeyModal] = useState(false);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
@@ -42,13 +41,8 @@ const App: React.FC = () => {
       // @ts-ignore
       const selected = await window.aistudio.hasSelectedApiKey();
       setHasApiKey(selected);
-      // 如果還沒設定金鑰，顯示截圖中的導引遮罩
-      if (!selected) {
-        setShowKeyOverlay(true);
-      }
     } catch (e) {
       setHasApiKey(false);
-      setShowKeyOverlay(true);
     }
   };
 
@@ -56,10 +50,8 @@ const App: React.FC = () => {
     try {
       // @ts-ignore
       await window.aistudio.openSelectKey();
-      // 觸發後直接解鎖介面
       setHasApiKey(true);
-      setShowKeyOverlay(false);
-      setShowKeyGuide(false);
+      setShowKeyModal(false);
     } catch (e) {
       console.error("Failed to open key selector", e);
     }
@@ -98,7 +90,7 @@ const App: React.FC = () => {
       setError(err.message || '發生錯誤');
       if (err.message?.includes("API 金鑰")) {
         setHasApiKey(false);
-        setShowKeyOverlay(true);
+        setShowKeyModal(true);
       }
     } finally {
       setIsGenerating(false);
@@ -123,56 +115,19 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] flex flex-col antialiased">
-      {/* 截圖樣式：API 金鑰輸入遮罩 */}
-      {showKeyOverlay && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#0f172a]/90 backdrop-blur-md p-6">
-          <div className="bg-[#1e293b] w-full max-w-xl rounded-[2rem] p-10 shadow-2xl border border-white/5 animate-in fade-in zoom-in-95 duration-300">
-            <div className="flex items-start gap-6 mb-8">
-              <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center border border-white/10 shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                </svg>
-              </div>
-              <div className="space-y-1">
-                <h2 className="text-3xl font-black text-white tracking-tight">需要 API 金鑰</h2>
-                <p className="text-slate-400 text-lg font-medium">請輸入 Google Gemini 金鑰以啟動系統。</p>
-              </div>
-            </div>
-
-            <button 
-              onClick={handleSelectApiKey}
-              className="w-full bg-slate-900/50 hover:bg-slate-900 border border-white/10 rounded-2xl p-6 text-left transition-all group active:scale-[0.99]"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium text-lg tracking-wide group-hover:text-slate-300 transition-colors">
-                  貼上 AIza 開頭的金鑰...
-                </span>
-                <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-            </button>
-
-            <div className="mt-8 pt-8 border-t border-white/5 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-slate-500">
-               <button onClick={() => setShowKeyGuide(true)} className="hover:text-amber-500 transition-colors">新手導引</button>
-               <a href="https://aistudio.google.com/app/api-keys" target="_blank" rel="noreferrer" className="hover:text-amber-500 transition-colors">前往獲取金鑰 ↗</a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 獲取金鑰詳細步驟 Modal */}
-      {showKeyGuide && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#1e293b] w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10 animate-in zoom-in-95 duration-300">
+      {/* 天機風格 API 金鑰 Modal */}
+      {showKeyModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#0f172a] w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10 animate-in zoom-in-95 duration-300">
             <div className="p-8 pb-4 flex justify-between items-start">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">🔑</span>
-                <h2 className="text-2xl font-black text-[#fbbf24] tracking-tight">如何獲取 API 金鑰？</h2>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${hasApiKey ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-red-500 animate-pulse'}`}></div>
+                  <h2 className="text-xl font-black text-white tracking-tight">AI 核心金鑰設定</h2>
+                </div>
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">API Configuration Dashboard</p>
               </div>
-              <button onClick={() => setShowKeyGuide(false)} className="text-slate-400 hover:text-white transition-colors">
+              <button onClick={() => setShowKeyModal(false)} className="text-slate-500 hover:text-white transition-colors p-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -180,36 +135,49 @@ const App: React.FC = () => {
             </div>
             
             <div className="px-8 pb-8 space-y-6">
-              <p className="text-slate-300 text-sm leading-relaxed">
-                本系統使用 Google Gemini 強大的 AI 模型進行推演，您需要免費申請一個金鑰。
-              </p>
-              
-              <ol className="space-y-4">
-                {[
-                  { text: '前往 Google AI Studio', link: 'https://aistudio.google.com/app/api-keys?projectFilter=gen-lang-client-0354138731' },
-                  { text: '登入您的 Google 帳號。' },
-                  { text: '點擊藍色的 Create API key 按鈕。' },
-                  { text: '選擇 Create API key in new project。' },
-                  { text: '複製以 AIza 開頭的字串。' },
-                  { text: '回到這裡貼上即可使用！' }
-                ].map((step, i) => (
-                  <li key={i} className="flex gap-4 text-slate-200">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs font-black text-amber-400 border border-white/10">{i + 1}</span>
-                    <span className="text-sm">
-                      {step.link ? (
-                        <a href={step.link} target="_blank" rel="noreferrer" className="text-blue-400 font-bold underline hover:text-blue-300 transition-colors">{step.text}</a>
-                      ) : step.text}
-                    </span>
-                  </li>
-                ))}
-              </ol>
+              <div className="p-5 bg-white/5 rounded-2xl border border-white/10 space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center border border-amber-500/20">
+                    <span className="text-xl">💡</span>
+                  </div>
+                  <div>
+                    <p className="text-slate-200 text-sm font-bold">為什麼需要設定？</p>
+                    <p className="text-slate-500 text-[10px] leading-relaxed">為了確保 AI 推演的穩定性與個人數據安全，系統建議使用您專屬的免費 Google Gemini 金鑰。</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">啟動步驟</p>
+                <div className="grid gap-2">
+                  <a href="https://aistudio.google.com/app/api-keys?projectFilter=gen-lang-client-0354138731" target="_blank" rel="noreferrer" className="flex items-center justify-between p-4 bg-slate-900 border border-white/5 rounded-xl hover:border-blue-500/50 transition-all group">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-black text-blue-400">01</span>
+                      <span className="text-sm text-slate-300 font-bold group-hover:text-blue-400">前往 Google AI Studio 申請</span>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-600 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                  <button onClick={handleSelectApiKey} className="flex items-center justify-between p-4 bg-slate-900 border border-white/5 rounded-xl hover:border-amber-500/50 transition-all group">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-black text-amber-500">02</span>
+                      <span className="text-sm text-slate-300 font-bold group-hover:text-amber-500">選取並貼上 AIza 開頭金鑰</span>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-600 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
 
               <button 
                 onClick={handleSelectApiKey}
-                className="w-full py-4 bg-[#c2410c] hover:bg-[#9a3412] text-white font-black text-lg rounded-2xl shadow-xl transition-all transform active:scale-[0.98] mt-4"
+                className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:brightness-110 text-white font-black text-sm rounded-xl shadow-xl transition-all transform active:scale-[0.98] tracking-widest uppercase"
               >
-                我瞭解了，現在去貼上
+                立即連接 AI 核心
               </button>
+              <p className="text-center text-[9px] text-slate-600 font-bold">API KEY IS STORED SECURELY IN YOUR SESSION</p>
             </div>
           </div>
         </div>
@@ -226,8 +194,20 @@ const App: React.FC = () => {
               <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Tainan Realtor AI Pro</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-             <button 
+          <div className="flex items-center gap-2">
+            {/* API Status Indicator */}
+            <button 
+              onClick={() => setShowKeyModal(true)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
+                hasApiKey 
+                ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+                : 'bg-red-500/10 border-red-500/20 text-red-400 animate-pulse'
+              }`}
+            >
+              <div className={`w-1.5 h-1.5 rounded-full ${hasApiKey ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`}></div>
+              <span className="text-[10px] font-black tracking-widest uppercase">{hasApiKey ? 'Online' : 'API Key Req.'}</span>
+            </button>
+            <button 
               onClick={() => setShowConfig(!showConfig)} 
               className="flex items-center gap-2 bg-slate-800/50 hover:bg-slate-700 px-4 py-2 rounded-xl border border-white/5 transition-all text-xs font-bold"
             >
@@ -246,42 +226,12 @@ const App: React.FC = () => {
           {showConfig && (
             <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-200 animate-in fade-in slide-in-from-top-4 duration-300">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">📋 系統與個人設定</h3>
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">📋 個人與公司設定</h3>
                 <button onClick={() => setShowConfig(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
                 </button>
-              </div>
-
-              {/* API Key Section */}
-              <div className="mb-8 p-4 rounded-2xl bg-amber-50 border border-amber-200">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-[10px] font-black text-amber-600 uppercase tracking-wider">🔑 API 金鑰管理</label>
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${hasApiKey ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {hasApiKey ? '已連接金鑰' : '尚未設定'}
-                  </span>
-                </div>
-                <button 
-                  onClick={handleSelectApiKey}
-                  className="w-full py-3 bg-white border border-amber-300 text-amber-700 rounded-xl text-xs font-black hover:bg-amber-100 transition-all shadow-sm flex items-center justify-center gap-2 mb-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                  </svg>
-                  重新選取 API 金鑰
-                </button>
-                <div className="flex items-center justify-between px-1">
-                  <button onClick={() => setShowKeyGuide(true)} className="text-[10px] text-blue-600 font-black hover:underline">如何獲取金鑰？</button>
-                  <a 
-                    href="https://ai.google.dev/gemini-api/docs/billing" 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="text-[9px] text-amber-700 underline font-black hover:text-amber-900 transition-colors"
-                  >
-                    計費與額度說明 ↗
-                  </a>
-                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-5">
